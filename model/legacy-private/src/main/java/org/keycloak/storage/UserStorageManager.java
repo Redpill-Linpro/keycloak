@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.jboss.logging.Logger;
@@ -143,11 +144,19 @@ public class UserStorageManager extends AbstractStorageManager<UserStorageProvid
         credentialAuthenticationStream = Stream.concat(credentialAuthenticationStream,
                 getCredentialProviders(session, CredentialAuthentication.class));
 
-        return credentialAuthenticationStream
+        CredentialValidationOutput result = null;
+        for (CredentialAuthentication credentialAuthentication : credentialAuthenticationStream
                 .filter(credentialAuthentication -> credentialAuthentication.supportsCredentialAuthenticationFor(input.getType()))
-                .map(credentialAuthentication -> credentialAuthentication.authenticate(realm, input))
-                .filter(Objects::nonNull)
-                .findFirst().orElse(null);
+                .collect(Collectors.toList())) {
+            CredentialValidationOutput validationOutput = credentialAuthentication.authenticate(realm, input);
+            if (Objects.nonNull(validationOutput)) {
+                result = validationOutput;
+                if (result.getAuthStatus().equals(CredentialValidationOutput.Status.AUTHENTICATED)) {
+                    break;
+                }
+            }
+        }
+        return result;
     }
 
     protected void deleteInvalidUser(final RealmModel realm, final UserModel user) {
