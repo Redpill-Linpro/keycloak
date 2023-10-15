@@ -26,12 +26,9 @@ import org.jboss.resteasy.annotations.cache.NoCache;
 import org.keycloak.broker.saml.SAMLDataMarshaller;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.VerificationException;
-import org.keycloak.common.util.PemUtils;
 import org.keycloak.common.util.Resteasy;
 import org.keycloak.connections.httpclient.HttpClientProvider;
-import org.keycloak.crypto.Algorithm;
 import org.keycloak.crypto.KeyStatus;
-import org.keycloak.crypto.KeyUse;
 import org.keycloak.crypto.KeyWrapper;
 import org.keycloak.dom.saml.v2.SAML2Object;
 import org.keycloak.dom.saml.v2.assertion.BaseIDAbstractType;
@@ -66,6 +63,8 @@ import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.LoginProtocolFactory;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
+import org.keycloak.protocol.saml.descriptor.SamlMetadataDescriptorProvider;
+import org.keycloak.protocol.saml.descriptor.SamlMetadataDescriptorProviderFactory;
 import org.keycloak.protocol.saml.preprocessor.SamlAuthenticationPreprocessor;
 import org.keycloak.protocol.saml.profile.ecp.SamlEcpProfileService;
 import org.keycloak.protocol.saml.profile.util.Soap;
@@ -133,15 +132,13 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.PublicKey;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
-import java.util.stream.Collectors;
 
 import jakarta.ws.rs.core.MultivaluedMap;
-import javax.xml.parsers.ParserConfigurationException;
 
 import static org.keycloak.common.util.StackUtil.getShortStackTrace;
 import static org.keycloak.utils.LockObjectsForModification.lockUserSessionsForModification;
@@ -889,38 +886,22 @@ public class SamlService extends AuthorizationEndpointBase {
     @Path("descriptor")
     @Produces(MediaType.APPLICATION_XML)
     @NoCache
-    public String getDescriptor() throws Exception {
-        return getIDPMetadataDescriptor(session.getContext().getUri(), session, realm);
+    public Response getDescriptor() throws Exception {
+        SamlMetadataDescriptorProviderFactory samlMetadataDescriptorProviderFactoryFound = session
+                .getKeycloakSessionFactory()
+                .getProviderFactoriesStream(SamlMetadataDescriptorProvider.class)
+                .map(providerFactory -> (SamlMetadataDescriptorProviderFactory) providerFactory)
+                .min(Comparator.comparingInt(SamlMetadataDescriptorProviderFactory::getPriority))
+                .orElseThrow(NotFoundException::new);
 
-    }
+        SamlMetadataDescriptorProvider samlMetadataDescriptorProvider = session
+                .getProvider(SamlMetadataDescriptorProvider.class, samlMetadataDescriptorProviderFactoryFound.getId());
 
-    public static String getIDPMetadataDescriptor(UriInfo uriInfo, KeycloakSession session, RealmModel realm) {
-        try {
-            List<Element> signingKeys = session.keys().getKeysStream(realm, KeyUse.SIG, Algorithm.RS256)
-                    .sorted(SamlService::compareKeys)
-                    .map(key -> {
-                        try {
-                            return IDPMetadataDescriptor
-                                    .buildKeyInfoElement(key.getKid(), PemUtils.encodeCertificate(key.getCertificate()));
-                        } catch (ParserConfigurationException e) {
-                            throw new RuntimeException(e);
-                        }
-                    })
-                    .collect(Collectors.toList());
-
-            return IDPMetadataDescriptor.getIDPDescriptor(
-                RealmsResource.protocolUrl(uriInfo).build(realm.getName(), SamlProtocol.LOGIN_PROTOCOL),
-                RealmsResource.protocolUrl(uriInfo).build(realm.getName(), SamlProtocol.LOGIN_PROTOCOL),
-                RealmsResource.protocolUrl(uriInfo).build(realm.getName(), SamlProtocol.LOGIN_PROTOCOL),
-                RealmsResource.protocolUrl(uriInfo).path(SamlService.ARTIFACT_RESOLUTION_SERVICE_PATH)
-                        .build(realm.getName(), SamlProtocol.LOGIN_PROTOCOL),
-                RealmsResource.realmBaseUrl(uriInfo).build(realm.getName()).toString(),
-                true, 
-                signingKeys);
-        } catch (Exception ex) {
-            logger.error("Cannot generate IdP metadata", ex);
-            return "";
-        }
+        return Response
+                .ok(DocumentUtil.asString(samlMetadataDescriptorProvider.getIdpMetadataDescriptor()))
+                .type(jakarta.ws.rs.core.MediaType.APPLICATION_XML)
+                .cacheControl(CacheControlUtil.noCache())
+                .build();
     }
 
     public static int compareKeys(KeyWrapper o1, KeyWrapper o2) {

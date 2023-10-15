@@ -26,11 +26,16 @@ import org.keycloak.protocol.ClientInstallationProvider;
 import org.keycloak.protocol.saml.SamlClient;
 import org.keycloak.protocol.saml.SamlProtocol;
 
-import org.keycloak.protocol.saml.SamlService;
 import jakarta.ws.rs.core.Response;
+import org.keycloak.protocol.saml.descriptor.SamlMetadataDescriptorProvider;
+import org.keycloak.saml.common.util.DocumentUtil;
+import org.keycloak.services.ErrorResponseException;
+import org.keycloak.utils.MediaType;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.util.Objects;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -44,8 +49,19 @@ public class ModAuthMellonClientInstallation implements ClientInstallationProvid
         SamlClient samlClient = new SamlClient(client);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ZipOutputStream zip = new ZipOutputStream(baos);
-        String idpDescriptor = SamlService.getIDPMetadataDescriptor(session.getContext().getUri(), session, realm);
-        String spDescriptor = SamlSPDescriptorClientInstallation.getSPDescriptorForClient(client);
+
+        SamlMetadataDescriptorProvider samlMetadataDescriptorProvider =
+                session.getProvider(SamlMetadataDescriptorProvider.class);
+        if (Objects.isNull(samlMetadataDescriptorProvider)) {
+            Response response = Response
+                    .status(Response.Status.NOT_FOUND)
+                    .type(MediaType.TEXT_PLAIN_UTF_8)
+                    .build();
+            throw new ErrorResponseException(response);
+        }
+
+        String idpDescriptor = DocumentUtil.asString(samlMetadataDescriptorProvider.getIdpMetadataDescriptor());
+        String spDescriptor = DocumentUtil.asString(samlMetadataDescriptorProvider.getSpMetadataDescriptor(client));
         String clientDirName = client.getClientId()
                 .replace('/', '_')
                 .replace(' ', '_');
