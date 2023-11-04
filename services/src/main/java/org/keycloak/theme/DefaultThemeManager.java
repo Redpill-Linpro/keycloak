@@ -234,13 +234,13 @@ public class DefaultThemeManager implements ThemeManager {
         @Override
         public Properties getMessages(String baseBundlename, Locale locale) throws IOException {
             Map<Locale, Properties> messagesByLocale = getMessagesByLocale(baseBundlename, locale);
-            return LocaleUtil.mergeGroupedMessages(locale, messagesByLocale);
+            return LocaleUtil.mergeGroupedMessages(locale, messagesByLocale, true);
         }
         
         @Override
         public Properties getEnhancedMessages(RealmModel realm, Locale locale) throws IOException {
             Map<Locale, Properties> messagesByLocale = getMessagesByLocale("messages", locale);
-            return LocaleUtil.enhancePropertiesWithRealmLocalizationTexts(realm, locale, messagesByLocale);
+            return LocaleUtil.enhancePropertiesWithRealmLocalizationTexts(realm, locale, messagesByLocale, true);
         }
 
         private Map<Locale, Properties> getMessagesByLocale(String baseBundlename, Locale locale) throws IOException {
@@ -307,7 +307,7 @@ public class DefaultThemeManager implements ThemeManager {
     }
 
     private static Locale getParent(Locale locale) {
-        return LocaleUtil.getParentLocale(locale);
+        return LocaleUtil.getParentLocale(locale, true);
     }
 
     private List<ThemeProvider> getProviders() {

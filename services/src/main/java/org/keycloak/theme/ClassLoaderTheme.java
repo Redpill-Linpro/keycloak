@@ -155,7 +155,7 @@ public class ClassLoaderTheme implements Theme {
         }
 
         Map<Locale, Properties> localeMessages = Collections.singletonMap(locale, getMessages(locale));
-        return LocaleUtil.enhancePropertiesWithRealmLocalizationTexts(realm, locale, localeMessages);
+        return LocaleUtil.enhancePropertiesWithRealmLocalizationTexts(realm, locale, localeMessages, true);
     }
 
     @Override

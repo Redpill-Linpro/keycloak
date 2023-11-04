@@ -19,10 +19,20 @@ package org.keycloak.dom.saml.v2.metadata;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import org.keycloak.dom.saml.v2.mdattr.EntityAttributes;
 import org.keycloak.dom.saml.v2.mdui.UIInfoType;
+import org.w3c.dom.Attr;
+import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import static org.keycloak.saml.common.constants.JBossSAMLURIConstants.METADATA_UI;
+import static org.keycloak.saml.common.constants.JBossSAMLURIConstants.XML;
 
 /**
  * <p>
@@ -97,6 +107,75 @@ public class ExtensionsType {
         for (Object o : this.any) {
             if (o instanceof Element) {
                 output.add((Element) o);
+            }
+        }
+        UIInfoType uiInfoType = getUIInfo();
+        if (Objects.nonNull(uiInfoType)) {
+            try {
+                DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+                DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
+                Document document = documentBuilder.newDocument();
+                Element uiInfo = document.createElementNS(METADATA_UI.get(), "mdui:UIInfo");
+                uiInfoType.getDisplayName().forEach(localizedDisplayName -> {
+                    Element displayName = document.createElementNS(METADATA_UI.get(), "mdui:DisplayName");
+                    displayName.setTextContent(localizedDisplayName.getValue());
+                    displayName.setAttributeNS(
+                            XML.get(),
+                            "xml:lang",
+                            localizedDisplayName.getLang()
+                    );
+                    uiInfo.appendChild(displayName);
+                });
+
+                uiInfoType.getDescription().forEach(localizedDescription -> {
+                    Element description = document.createElementNS(METADATA_UI.get(), "mdui:Description");
+                    description.setTextContent(localizedDescription.getValue());
+                    description.setAttributeNS(
+                            XML.get(),
+                            "xml:lang",
+                            localizedDescription.getLang()
+                    );
+                    uiInfo.appendChild(description);
+                });
+
+                uiInfoType.getInformationURL().forEach(localizedInformationUrl -> {
+                    Element informationUrl =
+                            document.createElementNS(METADATA_UI.get(), "mdui:InformationURL");
+                    informationUrl.setTextContent(localizedInformationUrl.getValue().toString());
+                    informationUrl.setAttributeNS(
+                            XML.get(),
+                            "xml:lang",
+                            localizedInformationUrl.getLang()
+                    );
+                    uiInfo.appendChild(informationUrl);
+                });
+
+                uiInfoType.getPrivacyStatementURL().forEach(localizedPrivacyStatementUrl -> {
+                    Element privacyStatementUrl =
+                            document.createElementNS(METADATA_UI.get(), "mdui:PrivacyStatementURL");
+                    privacyStatementUrl.setTextContent(localizedPrivacyStatementUrl.getValue().toString());
+                    privacyStatementUrl.setAttributeNS(
+                            XML.get(),
+                            "xml:lang",
+                            localizedPrivacyStatementUrl.getLang()
+                    );
+                    uiInfo.appendChild(privacyStatementUrl);
+                });
+
+                uiInfoType.getKeywords().forEach(localizedKeywords -> {
+                    Element keywords =
+                            document.createElementNS(METADATA_UI.get(), "mdui:Keywords");
+                    keywords.setTextContent(String.join("+", localizedKeywords.getValues()));
+                    keywords.setAttributeNS(
+                            XML.get(),
+                            "xml:lang",
+                            localizedKeywords.getLang()
+                    );
+                    uiInfo.appendChild(keywords);
+                });
+                output.add(uiInfo);
+            } catch (ParserConfigurationException e) {
+                throw new RuntimeException(e);
             }
         }
 

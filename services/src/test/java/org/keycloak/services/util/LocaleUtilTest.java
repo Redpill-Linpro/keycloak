@@ -24,23 +24,23 @@ public class LocaleUtilTest {
 
     @Test
     public void getParentLocale() {
-        assertThat(LocaleUtil.getParentLocale(LOCALE_DE_CH_1996), equalTo(LOCALE_DE_CH));
-        assertThat(LocaleUtil.getParentLocale(LOCALE_DE_CH), equalTo(Locale.GERMAN));
-        assertThat(LocaleUtil.getParentLocale(Locale.GERMAN), equalTo(Locale.ENGLISH));
+        assertThat(LocaleUtil.getParentLocale(LOCALE_DE_CH_1996, true), equalTo(LOCALE_DE_CH));
+        assertThat(LocaleUtil.getParentLocale(LOCALE_DE_CH, true), equalTo(Locale.GERMAN));
+        assertThat(LocaleUtil.getParentLocale(Locale.GERMAN, true), equalTo(Locale.ENGLISH));
 
-        assertThat(LocaleUtil.getParentLocale(Locale.ENGLISH), nullValue());
+        assertThat(LocaleUtil.getParentLocale(Locale.ENGLISH, true), nullValue());
     }
 
     @Test
     public void getApplicableLocales() {
-        assertThat(LocaleUtil.getApplicableLocales(LOCALE_DE_CH_1996),
+        assertThat(LocaleUtil.getApplicableLocales(LOCALE_DE_CH_1996, true),
                 equalTo(Arrays.asList(LOCALE_DE_CH_1996, LOCALE_DE_CH, Locale.GERMAN, Locale.ENGLISH)));
-        assertThat(LocaleUtil.getApplicableLocales(LOCALE_DE_CH),
+        assertThat(LocaleUtil.getApplicableLocales(LOCALE_DE_CH, true),
                 equalTo(Arrays.asList(LOCALE_DE_CH, Locale.GERMAN, Locale.ENGLISH)));
-        assertThat(LocaleUtil.getApplicableLocales(Locale.GERMAN),
+        assertThat(LocaleUtil.getApplicableLocales(Locale.GERMAN, true),
                 equalTo(Arrays.asList(Locale.GERMAN, Locale.ENGLISH)));
 
-        assertThat(LocaleUtil.getApplicableLocales(Locale.ENGLISH), equalTo(Collections.singletonList(Locale.ENGLISH)));
+        assertThat(LocaleUtil.getApplicableLocales(Locale.ENGLISH, true), equalTo(Collections.singletonList(Locale.ENGLISH)));
     }
 
     @Test
@@ -75,7 +75,7 @@ public class LocaleUtilTest {
                 keyDefinedForLanguageAndParents, keyDefinedForEnglishOnly), Locale.ENGLISH);
         groupedMessages.put(Locale.ENGLISH, englishMessages);
 
-        Properties mergedMessages = LocaleUtil.mergeGroupedMessages(LOCALE_DE_CH_1996, groupedMessages);
+        Properties mergedMessages = LocaleUtil.mergeGroupedMessages(LOCALE_DE_CH_1996, groupedMessages, true);
 
         Properties expectedMergedMessages = new Properties();
         addTestValue(expectedMergedMessages, keyDefinedEverywhere, LOCALE_DE_CH_1996);
@@ -164,7 +164,7 @@ public class LocaleUtilTest {
         groupedMessages2.put(Locale.ENGLISH, english2Messages);
 
         Properties mergedMessages =
-                LocaleUtil.mergeGroupedMessages(LOCALE_DE_CH_1996, groupedMessages1, groupedMessages2);
+                LocaleUtil.mergeGroupedMessages(LOCALE_DE_CH_1996, groupedMessages1, groupedMessages2, true);
 
         Properties expectedMergedMessages = new Properties();
         addTestValue(expectedMergedMessages, keyDefinedForVariantFromMessages1AndFallbacks, LOCALE_DE_CH_1996,

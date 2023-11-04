@@ -17,8 +17,10 @@
 
 package org.keycloak.protocol.saml;
 
+import org.keycloak.dom.saml.v2.mdui.UIInfoType;
 import org.keycloak.dom.saml.v2.metadata.EndpointType;
 import org.keycloak.dom.saml.v2.metadata.EntityDescriptorType;
+import org.keycloak.dom.saml.v2.metadata.ExtensionsType;
 import org.keycloak.dom.saml.v2.metadata.IDPSSODescriptorType;
 import org.keycloak.dom.saml.v2.metadata.IndexedEndpointType;
 import org.keycloak.dom.saml.v2.metadata.KeyDescriptorType;
@@ -28,6 +30,7 @@ import java.io.StringWriter;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -55,9 +58,9 @@ import static org.keycloak.saml.common.constants.JBossSAMLURIConstants.PROTOCOL_
 public class IDPMetadataDescriptor {
 
     public static String getIDPDescriptor(URI loginPostEndpoint, URI loginRedirectEndpoint, URI logoutEndpoint,
-        URI artifactResolutionService, String entityId, boolean wantAuthnRequestsSigned, List<Element> signingCerts)
-        throws ProcessingException
-    {
+                                          URI artifactResolutionService, String entityId,
+                                          boolean wantAuthnRequestsSigned, List<Element> signingCerts,
+                                          UIInfoType uiInfo) throws ProcessingException {
       
         StringWriter sw = new StringWriter();
         XMLStreamWriter writer = StaxUtil.getXMLStreamWriter(sw);
@@ -91,6 +94,13 @@ public class IDPMetadataDescriptor {
                 keyDescriptor.setKeyInfo(key);
                 spIDPDescriptor.addKeyDescriptor(keyDescriptor);
             }
+        }
+
+        if (Objects.nonNull(uiInfo)) {
+            if (Objects.isNull(spIDPDescriptor.getExtensions())) {
+                spIDPDescriptor.setExtensions(new ExtensionsType());
+            }
+            spIDPDescriptor.getExtensions().addExtension(uiInfo);
         }
 
         entityDescriptor.addChoiceType(new EntityDescriptorType.EDTChoiceType(Arrays.asList(new EntityDescriptorType.EDTDescriptorChoiceType(spIDPDescriptor))));

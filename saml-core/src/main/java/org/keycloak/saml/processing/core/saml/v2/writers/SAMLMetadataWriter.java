@@ -51,6 +51,7 @@ import javax.xml.namespace.QName;
 import javax.xml.stream.XMLStreamWriter;
 import java.net.URI;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Write the SAML metadata elements
@@ -110,6 +111,7 @@ public class SAMLMetadataWriter extends BaseWriter {
         StaxUtil.writeStartElement(writer, METADATA_PREFIX, JBossSAMLConstants.ENTITY_DESCRIPTOR.get(), JBossSAMLURIConstants.METADATA_NSURI.get());
         StaxUtil.writeDefaultNameSpace(writer, JBossSAMLURIConstants.METADATA_NSURI.get());
         StaxUtil.writeNameSpace(writer, "md", JBossSAMLURIConstants.METADATA_NSURI.get());
+        StaxUtil.writeNameSpace(writer, "mdui", JBossSAMLURIConstants.METADATA_UI.get());
         StaxUtil.writeNameSpace(writer, "saml", JBossSAMLURIConstants.ASSERTION_NSURI.get());
         StaxUtil.writeNameSpace(writer, "ds", JBossSAMLURIConstants.XMLDSIG_NSURI.get());
 
@@ -249,6 +251,12 @@ public class SAMLMetadataWriter extends BaseWriter {
                     wantsAuthnRequestsSigned.toString());
         }
         writeProtocolSupportEnumeration(idpSSODescriptor.getProtocolSupportEnumeration());
+
+        // Get the extensions
+        ExtensionsType extensions = idpSSODescriptor.getExtensions();
+        if (Objects.nonNull(extensions)) {
+            write(extensions);
+        }
 
         // Get the key descriptors
         List<KeyDescriptorType> keyDescriptors = idpSSODescriptor.getKeyDescriptor();

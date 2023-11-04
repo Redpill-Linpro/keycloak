@@ -37,6 +37,10 @@ import org.keycloak.dom.saml.v2.SAML2Object;
 import org.keycloak.dom.saml.v2.assertion.BaseIDAbstractType;
 import org.keycloak.dom.saml.v2.assertion.NameIDType;
 import org.keycloak.dom.saml.v2.assertion.SubjectType;
+import org.keycloak.dom.saml.v2.mdui.KeywordsType;
+import org.keycloak.dom.saml.v2.mdui.UIInfoType;
+import org.keycloak.dom.saml.v2.metadata.LocalizedNameType;
+import org.keycloak.dom.saml.v2.metadata.LocalizedURIType;
 import org.keycloak.dom.saml.v2.protocol.ArtifactResolveType;
 import org.keycloak.dom.saml.v2.protocol.ArtifactResponseType;
 import org.keycloak.dom.saml.v2.protocol.AuthnRequestType;
@@ -102,8 +106,11 @@ import org.keycloak.services.messages.Messages;
 import org.keycloak.services.resources.RealmsResource;
 import org.keycloak.services.scheduled.ScheduledTaskRunner;
 import org.keycloak.services.util.CacheControlUtil;
+import org.keycloak.services.util.LocaleUtil;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.CommonClientSessionModel;
+import org.keycloak.theme.Theme;
+import org.keycloak.theme.ThemeProvider;
 import org.keycloak.timer.ScheduledTask;
 import org.keycloak.transaction.AsyncResponseTransaction;
 import org.keycloak.utils.MediaType;
@@ -132,11 +139,14 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.PublicKey;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
@@ -908,6 +918,11 @@ public class SamlService extends AuthorizationEndpointBase {
                     })
                     .collect(Collectors.toList());
 
+            UIInfoType uiInfo = null;
+            if (realm.getAttribute("saml.metadata.ui.enabled", false)) {
+                uiInfo = getUIInfo(session);
+            }
+
             return IDPMetadataDescriptor.getIDPDescriptor(
                 RealmsResource.protocolUrl(uriInfo).build(realm.getName(), SamlProtocol.LOGIN_PROTOCOL),
                 RealmsResource.protocolUrl(uriInfo).build(realm.getName(), SamlProtocol.LOGIN_PROTOCOL),
@@ -915,12 +930,93 @@ public class SamlService extends AuthorizationEndpointBase {
                 RealmsResource.protocolUrl(uriInfo).path(SamlService.ARTIFACT_RESOLUTION_SERVICE_PATH)
                         .build(realm.getName(), SamlProtocol.LOGIN_PROTOCOL),
                 RealmsResource.realmBaseUrl(uriInfo).build(realm.getName()).toString(),
-                true, 
-                signingKeys);
+                true,
+                signingKeys,
+                uiInfo
+            );
         } catch (Exception ex) {
             logger.error("Cannot generate IdP metadata", ex);
             return "";
         }
+    }
+
+    public static UIInfoType getUIInfo(KeycloakSession session) throws IOException, URISyntaxException {
+        RealmModel realm = session.getContext().getRealm();
+        UIInfoType uiInfo = new UIInfoType();
+        // Should the ThemeProvider be retrieved by priority instead of a hardcoded id?
+        ThemeProvider themeProvider = session.getProvider(ThemeProvider.class, "jar");
+        // How does one get hold of the default admin theme if no theme has been explicitly set for a given realm?
+        String adminThemeName = Objects.nonNull(realm.getAdminTheme()) ? realm.getAdminTheme() : "keycloak.v2";
+        Theme theme = themeProvider.getTheme(adminThemeName, Theme.Type.ADMIN);
+        String displayNameAlias = realm.getAttribute("saml.metadata.ui.displayName");
+        String descriptionAlias = realm.getAttribute("saml.metadata.ui.description");
+        String privacyStatementUrlAlias = realm.getAttribute("saml.metadata.ui.privacyStatementUrl");
+        String informationUrlAlias = realm.getAttribute("saml.metadata.ui.informationUrl");
+        String keywordsAlias = realm.getAttribute("saml.metadata.ui.keywords");
+        // How should data regarding logotypes be stored and retrieved?
+        List<Locale> supportedLocales = realm.getSupportedLocalesStream().map(Locale::new).collect(Collectors.toList());
+
+        for (Locale locale : supportedLocales) {
+            Map<Locale, Properties> localeMessages = Collections.singletonMap(locale, theme.getMessages(locale));
+            Properties enhancedMessages = LocaleUtil.enhancePropertiesWithRealmLocalizationTexts(
+                    realm,
+                    locale,
+                    localeMessages,
+                    false
+            );
+
+            if (Objects.nonNull(displayNameAlias) && !displayNameAlias.trim().isEmpty()) {
+                Object o = enhancedMessages.get(displayNameAlias);
+                if (o instanceof String) {
+                    LocalizedNameType displayName = new LocalizedNameType(locale.getLanguage());
+                    displayName.setValue((String) o);
+                    uiInfo.addDisplayName(displayName);
+                }
+            }
+            if (Objects.nonNull(descriptionAlias) && !descriptionAlias.trim().isEmpty()) {
+                Object o = enhancedMessages.get(descriptionAlias);
+                if (o instanceof String) {
+                    LocalizedNameType description = new LocalizedNameType(locale.getLanguage());
+                    description.setValue((String) o);
+                    uiInfo.addDescription(description);
+                }
+            }
+            if (Objects.nonNull(privacyStatementUrlAlias) && !privacyStatementUrlAlias.trim().isEmpty()) {
+                Object o = enhancedMessages.get(privacyStatementUrlAlias);
+                if (o instanceof String) {
+                    LocalizedURIType privacyStatementUrl = new LocalizedURIType(locale.getLanguage());
+                    URI uri = new URI((String) o);
+                    privacyStatementUrl.setValue(uri);
+                    uiInfo.addPrivacyStatementURL(privacyStatementUrl);
+                }
+            }
+            if (Objects.nonNull(informationUrlAlias) && !informationUrlAlias.trim().isEmpty()) {
+                Object o = enhancedMessages.get(informationUrlAlias);
+                if (o instanceof String) {
+                    LocalizedURIType informationUrl = new LocalizedURIType(locale.getLanguage());
+                    URI uri = new URI((String) o);
+                    informationUrl.setValue(uri);
+                    uiInfo.addInformationURL(informationUrl);
+                }
+            }
+            if (Objects.nonNull(keywordsAlias) && !keywordsAlias.trim().isEmpty()) {
+                Object o = enhancedMessages.get(keywordsAlias);
+                if (o instanceof String) {
+                    KeywordsType keywords = new KeywordsType(locale.getLanguage());
+                    List<String> keywordValues =
+                            Arrays.stream(((String) o).split("\\+")).collect(Collectors.toList());
+                    keywords.setValues(keywordValues);
+                    uiInfo.addKeywords(keywords);
+                }
+            }
+        }
+        // This element, if it appears, MUST contain at least one child element
+        return uiInfo.getDisplayName().isEmpty()
+                && uiInfo.getDescription().isEmpty()
+                && uiInfo.getPrivacyStatementURL().isEmpty()
+                && uiInfo.getInformationURL().isEmpty()
+                && uiInfo.getKeywords().isEmpty()
+                && uiInfo.getLogo().isEmpty() ? null : uiInfo;
     }
 
     public static int compareKeys(KeyWrapper o1, KeyWrapper o2) {

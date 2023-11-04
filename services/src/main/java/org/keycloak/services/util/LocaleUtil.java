@@ -64,9 +64,10 @@ public class LocaleUtil {
      * returns the fallback locale "en". For "en" no parent exists, {@code null} is returned.
      * 
      * @param locale the locale
+     * @param includeDefault a boolean, indicating if the default english locale should be included
      * @return the parent locale, may be {@code null}
      */
-    public static Locale getParentLocale(Locale locale) {
+    public static Locale getParentLocale(Locale locale, boolean includeDefault) {
         if (locale.getVariant() != null && !locale.getVariant().isEmpty()) {
             return new Locale(locale.getLanguage(), locale.getCountry());
         }
@@ -75,7 +76,7 @@ public class LocaleUtil {
             return new Locale(locale.getLanguage());
         }
 
-        if (!Locale.ENGLISH.equals(locale)) {
+        if (!Locale.ENGLISH.equals(locale) && includeDefault) {
             return Locale.ENGLISH;
         }
 
@@ -88,12 +89,13 @@ public class LocaleUtil {
      * Example: Locale "de-CH" has the applicable locales "de-CH", "de" and "en" (in exactly that order).
      * 
      * @param locale the locale
+     * @param includeDefault a boolean, indicating if the default english locale should be included
      * @return the applicable locales
      */
-    static List<Locale> getApplicableLocales(Locale locale) {
+    static List<Locale> getApplicableLocales(Locale locale, boolean includeDefault) {
         List<Locale> applicableLocales = new ArrayList<>();
 
-        for (Locale currentLocale = locale; currentLocale != null; currentLocale = getParentLocale(currentLocale)) {
+        for (Locale currentLocale = locale; currentLocale != null; currentLocale = getParentLocale(currentLocale, includeDefault)) {
             applicableLocales.add(currentLocale);
         }
 
@@ -106,11 +108,12 @@ public class LocaleUtil {
      * 
      * @param locale the locale
      * @param messages the (locale-)grouped messages
+     * @param includeDefault a boolean, indicating if the default english locale should be included
      * @return the merged properties
-     * @see #mergeGroupedMessages(Locale, Map, Map)
+     * @see #mergeGroupedMessages(Locale, Map, Map, boolean)
      */
-    public static Properties mergeGroupedMessages(Locale locale, Map<Locale, Properties> messages) {
-        return mergeGroupedMessages(locale, messages, null);
+    public static Properties mergeGroupedMessages(Locale locale, Map<Locale, Properties> messages, boolean includeDefault) {
+        return mergeGroupedMessages(locale, messages, null, includeDefault);
     }
 
     /**
@@ -146,12 +149,13 @@ public class LocaleUtil {
      *        {@code secondMessages}
      * @param secondMessages may be {@code null}, the second (locale-)grouped messages, having lower priority (per
      *        locale) than {@code firstMessages}
+     * @param includeDefault a boolean, indicating if the default english locale should be included
      * @return the merged properties
-     * @see #mergeGroupedMessages(Locale, Map)
+     * @see #mergeGroupedMessages(Locale, Map, boolean)
      */
     public static Properties mergeGroupedMessages(Locale locale, Map<Locale, Properties> firstMessages,
-            Map<Locale, Properties> secondMessages) {
-        List<Locale> applicableLocales = getApplicableLocales(locale);
+            Map<Locale, Properties> secondMessages, boolean includeDefault) {
+        List<Locale> applicableLocales = getApplicableLocales(locale, includeDefault);
 
         Properties mergedProperties = new Properties();
 
@@ -186,24 +190,25 @@ public class LocaleUtil {
      * the theme properties, but only when defined for the same locale. In general, texts for a more specific locale
      * take precedence over texts for a less specific locale.
      * <p>
-     * For implementation details, see {@link #mergeGroupedMessages(Locale, Map, Map)}.
+     * For implementation details, see {@link #mergeGroupedMessages(Locale, Map, Map, boolean)}.
      * 
      * @param realm the realm from which the localization texts should be used
      * @param locale the locale for which the relevant texts should be retrieved
      * @param themeMessages the theme messages, which should be enhanced and maybe overwritten
+     * @param includeDefault a boolean, indicating if the default english locale should be included
      * @return the enhanced properties
      */
     public static Properties enhancePropertiesWithRealmLocalizationTexts(RealmModel realm, Locale locale,
-            Map<Locale, Properties> themeMessages) {
-        Map<Locale, Properties> realmLocalizationMessages = getRealmLocalizationTexts(realm, locale);
+            Map<Locale, Properties> themeMessages, boolean includeDefault) {
+        Map<Locale, Properties> realmLocalizationMessages = getRealmLocalizationTexts(realm, locale, includeDefault);
 
-        return mergeGroupedMessages(locale, realmLocalizationMessages, themeMessages);
+        return mergeGroupedMessages(locale, realmLocalizationMessages, themeMessages, includeDefault);
     }
 
-    public static Map<Locale, Properties> getRealmLocalizationTexts(RealmModel realm, Locale locale) {
+    public static Map<Locale, Properties> getRealmLocalizationTexts(RealmModel realm, Locale locale, boolean includeDefault) {
         LinkedHashMap<Locale, Properties> groupedMessages = new LinkedHashMap<>();
 
-        List<Locale> applicableLocales = getApplicableLocales(locale);
+        List<Locale> applicableLocales = getApplicableLocales(locale, includeDefault);
         for (Locale applicableLocale : applicableLocales) {
             Map<String, String> currentRealmLocalizationTexts =
                     realm.getRealmLocalizationTextsByLocale(applicableLocale.toLanguageTag());
