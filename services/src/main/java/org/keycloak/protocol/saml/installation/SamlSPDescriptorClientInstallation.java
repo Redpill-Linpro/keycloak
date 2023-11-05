@@ -19,6 +19,7 @@ package org.keycloak.protocol.saml.installation;
 
 import org.jboss.logging.Logger;
 import org.keycloak.Config;
+import org.keycloak.dom.saml.v2.mdui.UIInfoType;
 import org.keycloak.dom.saml.v2.metadata.EntityDescriptorType;
 import org.keycloak.dom.saml.v2.metadata.KeyDescriptorType;
 import org.keycloak.dom.saml.v2.metadata.KeyTypes;
@@ -29,6 +30,7 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.protocol.ClientInstallationProvider;
 import org.keycloak.protocol.saml.SamlClient;
 import org.keycloak.protocol.saml.SamlProtocol;
+import org.keycloak.protocol.saml.SamlService;
 import org.keycloak.saml.SPMetadataDescriptor;
 import org.keycloak.saml.common.constants.JBossSAMLURIConstants;
 import org.keycloak.saml.common.util.StaxUtil;
@@ -53,7 +55,7 @@ public class SamlSPDescriptorClientInstallation implements ClientInstallationPro
     public static final String SAML_CLIENT_INSTALATION_SP_DESCRIPTOR = "saml-sp-descriptor";
     private static final String FALLBACK_ERROR_URL_STRING = "ERROR:ENDPOINT_NOT_SET";
 
-    public static String getSPDescriptorForClient(ClientModel client) {
+    public static String getSPDescriptorForClient(KeycloakSession session, ClientModel client) {
         try {
             SamlClient samlClient = new SamlClient(client);
             String assertionUrl;
@@ -102,14 +104,20 @@ public class SamlSPDescriptorClientInstallation implements ClientInstallationPro
                     KeyTypes.ENCRYPTION,
                     null);
 
+            UIInfoType uiInfo = null;
+            if (Boolean.parseBoolean(client.getAttribute("saml.metadata.ui.enabled"))) {
+                uiInfo = SamlService.getUIInfo(session, client.getAttributes());
+            }
+
             StringWriter sw = new StringWriter();
             XMLStreamWriter writer = StaxUtil.getXMLStreamWriter(sw);
             SAMLMetadataWriter metadataWriter = new SAMLMetadataWriter(writer);
 
             EntityDescriptorType entityDescriptor = SPMetadataDescriptor.buildSPDescriptor(
-                loginBinding, logoutBinding, new URI(assertionUrl), new URI(logoutUrl), 
-                samlClient.requiresClientSignature(), samlClient.requiresAssertionSignature(), samlClient.requiresEncryption(), 
-                client.getClientId(), nameIdFormat, Collections.singletonList(spCertificate), Collections.singletonList(encCertificate));
+                    loginBinding, logoutBinding, new URI(assertionUrl), new URI(logoutUrl),
+                    samlClient.requiresClientSignature(), samlClient.requiresAssertionSignature(), samlClient.requiresEncryption(),
+                    client.getClientId(), nameIdFormat, Collections.singletonList(spCertificate),
+                    Collections.singletonList(encCertificate), uiInfo);
             
             metadataWriter.writeEntityDescriptor(entityDescriptor);
 
@@ -122,7 +130,7 @@ public class SamlSPDescriptorClientInstallation implements ClientInstallationPro
 
     @Override
     public Response generateInstallation(KeycloakSession session, RealmModel realm, ClientModel client, URI serverBaseUri) {
-        String descriptor = getSPDescriptorForClient(client);
+        String descriptor = getSPDescriptorForClient(session, client);
         return Response.ok(descriptor, MediaType.TEXT_PLAIN_TYPE).build();
     }
 

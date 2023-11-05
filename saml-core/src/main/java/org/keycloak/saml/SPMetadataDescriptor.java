@@ -20,12 +20,15 @@ package org.keycloak.saml;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import org.keycloak.dom.saml.v2.mdui.UIInfoType;
 import org.keycloak.dom.saml.v2.metadata.EndpointType;
 import org.keycloak.dom.saml.v2.metadata.EntityDescriptorType;
+import org.keycloak.dom.saml.v2.metadata.ExtensionsType;
 import org.keycloak.dom.saml.v2.metadata.IndexedEndpointType;
 import org.keycloak.dom.saml.v2.metadata.KeyDescriptorType;
 import org.keycloak.dom.saml.v2.metadata.KeyTypes;
@@ -46,7 +49,8 @@ public class SPMetadataDescriptor {
 
     public static EntityDescriptorType buildSPDescriptor(URI loginBinding, URI logoutBinding, URI assertionEndpoint, URI logoutEndpoint,
                                                          boolean wantAuthnRequestsSigned, boolean wantAssertionsSigned, boolean wantAssertionsEncrypted,
-                                                         String entityId, String nameIDPolicyFormat, List<KeyDescriptorType> signingCerts, List<KeyDescriptorType> encryptionCerts)
+                                                         String entityId, String nameIDPolicyFormat, List<KeyDescriptorType> signingCerts, List<KeyDescriptorType> encryptionCerts,
+                                                         UIInfoType uiInfo)
     {
         EntityDescriptorType entityDescriptor = new EntityDescriptorType(entityId);
         entityDescriptor.setID(IDGenerator.create("ID_"));
@@ -73,6 +77,13 @@ public class SPMetadataDescriptor {
         assertionConsumerEndpoint.setIsDefault(true);
         assertionConsumerEndpoint.setIndex(1);
         spSSODescriptor.addAssertionConsumerService(assertionConsumerEndpoint);
+
+        if (Objects.nonNull(uiInfo)) {
+            if (Objects.isNull(spSSODescriptor.getExtensions())) {
+                spSSODescriptor.setExtensions(new ExtensionsType());
+            }
+            spSSODescriptor.getExtensions().addExtension(uiInfo);
+        }
 
         entityDescriptor.addChoiceType(new EntityDescriptorType.EDTChoiceType(Arrays.asList(new EntityDescriptorType.EDTDescriptorChoiceType(spSSODescriptor))));
 

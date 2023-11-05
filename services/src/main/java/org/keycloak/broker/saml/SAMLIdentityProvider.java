@@ -414,7 +414,7 @@ public class SAMLIdentityProvider extends AbstractIdentityProvider<SAMLIdentityP
             EntityDescriptorType entityDescriptor = SPMetadataDescriptor.buildSPDescriptor(
                 authnResponseBinding, logoutBinding, endpoint, endpoint,
                 wantAuthnRequestsSigned, wantAssertionsSigned, wantAssertionsEncrypted,
-                entityId, nameIDPolicyFormat, signingKeys, encryptionKeys);
+                entityId, nameIDPolicyFormat, signingKeys, encryptionKeys, null);
 
             // Create the AttributeConsumingService if at least one attribute importer mapper exists
             List<Entry<IdentityProviderMapperModel, SamlMetadataDescriptorUpdater>> metadataAttrProviders = new ArrayList<>();

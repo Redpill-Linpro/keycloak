@@ -204,6 +204,12 @@ public class SAMLMetadataWriter extends BaseWriter {
                     wantAssertionsSigned.toString());
         }
 
+        // Get the extensions
+        ExtensionsType extensions = spSSODescriptor.getExtensions();
+        if (Objects.nonNull(extensions)) {
+            write(extensions);
+        }
+
         // Get the key descriptors
         List<KeyDescriptorType> keyDescriptors = spSSODescriptor.getKeyDescriptor();
         for (KeyDescriptorType keyDescriptor : keyDescriptors) {

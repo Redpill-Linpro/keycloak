@@ -45,7 +45,7 @@ public class ModAuthMellonClientInstallation implements ClientInstallationProvid
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ZipOutputStream zip = new ZipOutputStream(baos);
         String idpDescriptor = SamlService.getIDPMetadataDescriptor(session.getContext().getUri(), session, realm);
-        String spDescriptor = SamlSPDescriptorClientInstallation.getSPDescriptorForClient(client);
+        String spDescriptor = SamlSPDescriptorClientInstallation.getSPDescriptorForClient(session, client);
         String clientDirName = client.getClientId()
                 .replace('/', '_')
                 .replace(' ', '_');

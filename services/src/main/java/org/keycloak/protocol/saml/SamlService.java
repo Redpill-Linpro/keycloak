@@ -920,7 +920,7 @@ public class SamlService extends AuthorizationEndpointBase {
 
             UIInfoType uiInfo = null;
             if (realm.getAttribute("saml.metadata.ui.enabled", false)) {
-                uiInfo = getUIInfo(session);
+                uiInfo = getUIInfo(session, realm.getAttributes());
             }
 
             return IDPMetadataDescriptor.getIDPDescriptor(
@@ -940,7 +940,7 @@ public class SamlService extends AuthorizationEndpointBase {
         }
     }
 
-    public static UIInfoType getUIInfo(KeycloakSession session) throws IOException, URISyntaxException {
+    public static UIInfoType getUIInfo(KeycloakSession session, Map<String, String> attributes) throws IOException, URISyntaxException {
         RealmModel realm = session.getContext().getRealm();
         UIInfoType uiInfo = new UIInfoType();
         // Should the ThemeProvider be retrieved by priority instead of a hardcoded id?
@@ -948,11 +948,11 @@ public class SamlService extends AuthorizationEndpointBase {
         // How does one get hold of the default admin theme if no theme has been explicitly set for a given realm?
         String adminThemeName = Objects.nonNull(realm.getAdminTheme()) ? realm.getAdminTheme() : "keycloak.v2";
         Theme theme = themeProvider.getTheme(adminThemeName, Theme.Type.ADMIN);
-        String displayNameAlias = realm.getAttribute("saml.metadata.ui.displayName");
-        String descriptionAlias = realm.getAttribute("saml.metadata.ui.description");
-        String privacyStatementUrlAlias = realm.getAttribute("saml.metadata.ui.privacyStatementUrl");
-        String informationUrlAlias = realm.getAttribute("saml.metadata.ui.informationUrl");
-        String keywordsAlias = realm.getAttribute("saml.metadata.ui.keywords");
+        String displayNameAlias = attributes.get("saml.metadata.ui.displayName");
+        String descriptionAlias = attributes.get("saml.metadata.ui.description");
+        String privacyStatementUrlAlias = attributes.get("saml.metadata.ui.privacyStatementUrl");
+        String informationUrlAlias = attributes.get("saml.metadata.ui.informationUrl");
+        String keywordsAlias = attributes.get("saml.metadata.ui.keywords");
         // How should data regarding logotypes be stored and retrieved?
         List<Locale> supportedLocales = realm.getSupportedLocalesStream().map(Locale::new).collect(Collectors.toList());
 
